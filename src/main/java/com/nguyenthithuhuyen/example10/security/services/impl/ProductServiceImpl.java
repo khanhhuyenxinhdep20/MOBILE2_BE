@@ -38,23 +38,23 @@ public class ProductServiceImpl implements ProductService {
         return productRepository.findAllWithCategory();
     }
 
-    @Override
-    public Product updateProduct(Product product) {
-        Product existingProduct = productRepository.findById(product.getId())
-                .orElseThrow(() -> new RuntimeException("Product not found with id: " + product.getId()));
+@Override
+public Product updateProduct(Long productId, Product product) {
 
-        existingProduct.setName(product.getName());
-        existingProduct.setDescription(product.getDescription());
-        existingProduct.setImageUrl(product.getImageUrl());
-        existingProduct.setPrice(product.getPrice());
-        existingProduct.setCategory(product.getCategory());
-        existingProduct.setStockQuantity(product.getStockQuantity());
-        existingProduct.setIsActive(product.getIsActive());
-        existingProduct.setUpdatedAt(product.getUpdatedAt());
+    Product existingProduct = productRepository.findById(productId)
+            .orElseThrow(() ->
+                    new RuntimeException("Product not found with id: " + productId));
 
-        return productRepository.save(existingProduct);
-    }
+    existingProduct.setName(product.getName());
+    existingProduct.setDescription(product.getDescription());
+    existingProduct.setImageUrl(product.getImageUrl());
+    existingProduct.setPrice(product.getPrice());
+    existingProduct.setCategory(product.getCategory());
+    existingProduct.setStockQuantity(product.getStockQuantity());
+    existingProduct.setIsActive(product.getIsActive());
 
+    return productRepository.save(existingProduct);
+}
     @Override
     public void deleteProduct(Long productId) {
         productRepository.deleteById(productId);

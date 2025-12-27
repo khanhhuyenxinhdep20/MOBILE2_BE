@@ -5,48 +5,40 @@ import com.nguyenthithuhuyen.example10.dto.ProductWithPromotionsDTO;
 import com.nguyenthithuhuyen.example10.entity.Category;
 import com.nguyenthithuhuyen.example10.entity.Product;
 import com.nguyenthithuhuyen.example10.repository.CategoryRepository;
-import com.nguyenthithuhuyen.example10.repository.ProductRepository;
 import com.nguyenthithuhuyen.example10.security.services.ProductService;
 import com.nguyenthithuhuyen.example10.security.services.impl.ProductServiceImpl;
-
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-
 import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
-@AllArgsConstructor
+@RequiredArgsConstructor
 @RequestMapping("/api/products")
 public class ProductController {
 
     private final ProductService productService;
-    private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final ProductServiceImpl productWithPromotionService;
-    
 
     // ======================
     // GET ALL PRODUCTS
     // ======================
     @GetMapping
     public ResponseEntity<List<Product>> getAllProducts() {
-        List<Product> products = productRepository.findAllWithCategory();
-        return ResponseEntity.ok(products);
+        return ResponseEntity.ok(productService.getAllProducts());
     }
 
     // ======================
     // GET PRODUCT BY ID
     // ======================
     @GetMapping("/{id}")
-    public ResponseEntity<Product> getProduct(@PathVariable Long id) {
-        Product product = productRepository.findByIdWithCategory(id)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
-        return ResponseEntity.ok(product);
+    public ResponseEntity<Product> getProductById(@PathVariable Long id) {
+        return ResponseEntity.ok(productService.getProductById(id));
     }
 
     // ======================
@@ -54,20 +46,23 @@ public class ProductController {
     // ======================
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
-    public ResponseEntity<ProductResponseDto> createProduct(@RequestBody ProductRequest request) {
+    public ResponseEntity<ProductResponseDto> createProduct(
+            @RequestBody ProductRequest request) {
+
         Category category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new RuntimeException("Category not found"));
 
-        Product p = new Product();
-        p.setName(request.getName());
-        p.setDescription(request.getDescription());
-        p.setPrice(request.getPrice());
-        p.setStockQuantity(request.getStockQuantity());
-        p.setIsActive(request.getIsActive() != null ? request.getIsActive() : true);
-        p.setCategory(category);
-        p.setImageUrl(request.getImageUrl()); // Lấy URL từ frontend
+        Product product = Product.builder()
+                .name(request.getName())
+                .description(request.getDescription())
+                .price(request.getPrice())
+                .stockQuantity(request.getStockQuantity())
+                .isActive(request.getIsActive() != null ? request.getIsActive() : true)
+                .imageUrl(request.getImageUrl())
+                .category(category)
+                .build();
 
-        Product saved = productRepository.save(p);
+        Product saved = productService.createProduct(product);
         return ResponseEntity.status(HttpStatus.CREATED).body(mapToDto(saved));
     }
 
@@ -80,21 +75,20 @@ public class ProductController {
             @PathVariable Long id,
             @RequestBody ProductRequest request) {
 
-        Product existing = productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
-
         Category category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new RuntimeException("Category not found"));
 
-        existing.setName(request.getName());
-        existing.setDescription(request.getDescription());
-        existing.setPrice(request.getPrice());
-        existing.setStockQuantity(request.getStockQuantity());
-        existing.setIsActive(request.getIsActive() != null ? request.getIsActive() : existing.getIsActive());
-        existing.setCategory(category);
-        existing.setImageUrl(request.getImageUrl()); // Lấy URL từ frontend
+        Product product = Product.builder()
+                .name(request.getName())
+                .description(request.getDescription())
+                .price(request.getPrice())
+                .stockQuantity(request.getStockQuantity())
+                .isActive(request.getIsActive())
+                .imageUrl(request.getImageUrl())
+                .category(category)
+                .build();
 
-        Product updated = productRepository.save(existing);
+        Product updated = productService.updateProduct(id, product);
         return ResponseEntity.ok(mapToDto(updated));
     }
 
@@ -109,23 +103,33 @@ public class ProductController {
     }
 
     // ======================
-    // DTO Mapper
+    // PRODUCTS WITH ACTIVE PROMOTIONS
     // ======================
-    private ProductResponseDto mapToDto(Product p) {
-        ProductResponseDto r = new ProductResponseDto();
-        r.id = p.getId();
-        r.name = p.getName();
-        r.description = p.getDescription();
-        r.price = p.getPrice();
-        r.imageUrl = p.getImageUrl();
-        r.stockQuantity = p.getStockQuantity();
-        r.isActive = p.getIsActive();
-        r.category = p.getCategory();
-        return r;
+    @GetMapping("/with-active-promotions")
+    public ResponseEntity<List<ProductWithPromotionsDTO>> getProductsWithPromotions() {
+        return ResponseEntity.ok(
+                productWithPromotionService.getAllProductsWithActivePromotions()
+        );
     }
 
     // ======================
-    // ProductRequest DTO
+    // DTO MAPPER
+    // ======================
+    private ProductResponseDto mapToDto(Product p) {
+        ProductResponseDto dto = new ProductResponseDto();
+        dto.id = p.getId();
+        dto.name = p.getName();
+        dto.description = p.getDescription();
+        dto.price = p.getPrice();
+        dto.imageUrl = p.getImageUrl();
+        dto.stockQuantity = p.getStockQuantity();
+        dto.isActive = p.getIsActive();
+        dto.category = p.getCategory();
+        return dto;
+    }
+
+    // ======================
+    // REQUEST DTO
     // ======================
     public static class ProductRequest {
         private String name;
@@ -136,25 +140,25 @@ public class ProductController {
         private Boolean isActive;
         private String imageUrl;
 
-        // getters & setters
         public String getName() { return name; }
         public void setName(String name) { this.name = name; }
+
         public String getDescription() { return description; }
         public void setDescription(String description) { this.description = description; }
+
         public BigDecimal getPrice() { return price; }
         public void setPrice(BigDecimal price) { this.price = price; }
+
         public Long getCategoryId() { return categoryId; }
         public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
+
         public Integer getStockQuantity() { return stockQuantity; }
         public void setStockQuantity(Integer stockQuantity) { this.stockQuantity = stockQuantity; }
+
         public Boolean getIsActive() { return isActive; }
         public void setIsActive(Boolean isActive) { this.isActive = isActive; }
+
         public String getImageUrl() { return imageUrl; }
         public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
     }
-    @GetMapping("/with-active-promotions")
-public ResponseEntity<List<ProductWithPromotionsDTO>> getAllProductsWithActivePromotions() {
-    return ResponseEntity.ok(productWithPromotionService.getAllProductsWithActivePromotions());
-}
-
 }
