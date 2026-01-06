@@ -16,56 +16,48 @@ public class CategoryController {
 
     private final CategoryService categoryService;
 
-    // Create Category
+    // ================= CREATE =================
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
-    public ResponseEntity<Category> createCategory(@RequestBody Category category) {
-        Category savedCategory = categoryService.createCategory(category);
+    public ResponseEntity<Category> createCategory(
+            @RequestBody Category category,
+            @RequestParam(required = false) Long parentId
+    ) {
+        Category savedCategory = categoryService.createCategory(category, parentId);
         return ResponseEntity.status(201).body(savedCategory);
     }
 
-    // Get Category by ID
+    // ================= GET BY ID =================
     @GetMapping("/{id}")
     public ResponseEntity<Category> getCategoryById(@PathVariable Long id) {
-        try {
-            Category category = categoryService.getCategoryById(id);
-            return ResponseEntity.ok(category);
-        } catch (RuntimeException ex) {
-            return ResponseEntity.notFound().build();
-        }
+        Category category = categoryService.getCategoryById(id);
+        return ResponseEntity.ok(category);
     }
 
-    // Get All Categories
-    // @PreAuthorize("hasRole('ADMIN')")
+    // ================= GET ALL =================
     @GetMapping
     public ResponseEntity<List<Category>> getAllCategories() {
-        List<Category> categories = categoryService.getAllCategories();
-        return ResponseEntity.ok(categories);
+        return ResponseEntity.ok(categoryService.getAllCategories());
     }
 
-    // Update Category
+    // ================= UPDATE =================
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
-    public ResponseEntity<Category> updateCategory(@PathVariable Long id,
-                                                   @RequestBody Category category) {
-        try {
-            category.setId(id); // giữ id đồng nhất
-            Category updatedCategory = categoryService.updateCategory(category);
-            return ResponseEntity.ok(updatedCategory);
-        } catch (RuntimeException ex) {
-            return ResponseEntity.notFound().build();
-        }
+    public ResponseEntity<Category> updateCategory(
+            @PathVariable Long id,
+            @RequestBody Category category,
+            @RequestParam(required = false) Long parentId
+    ) {
+        category.setId(id);
+        Category updatedCategory = categoryService.updateCategory(category, parentId);
+        return ResponseEntity.ok(updatedCategory);
     }
 
-    // Delete Category
+    // ================= DELETE =================
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteCategory(@PathVariable Long id) {
-        try {
-            categoryService.deleteCategory(id);
-            return ResponseEntity.ok("Category successfully deleted!");
-        } catch (RuntimeException ex) {
-            return ResponseEntity.status(404).body("Category not found!");
-        }
+        categoryService.deleteCategory(id);
+        return ResponseEntity.ok("Category successfully deleted!");
     }
 }

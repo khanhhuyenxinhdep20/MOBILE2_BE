@@ -17,20 +17,34 @@ public class CategoryServiceImpl implements CategoryService {
 
     // ================= CREATE =================
     @Override
-    public Category createCategory(Category category) {
-
-        // Nếu có parent → load từ DB
-        if (category.getParent() != null && category.getParent().getId() != null) {
-            Category parent = categoryRepository.findById(category.getParent().getId())
-                    .orElseThrow(() -> new RuntimeException(
-                            "Parent category not found with id: " + category.getParent().getId()));
-            category.setParent(parent);
-        } else {
-            category.setParent(null);
-        }
-
-        return categoryRepository.save(category);
+public Category createCategory(Category category, Long parentId) {
+    if (parentId != null) {
+        Category parent = categoryRepository.findById(parentId)
+                .orElseThrow(() -> new RuntimeException("Parent category not found"));
+        category.setParent(parent);
     }
+    return categoryRepository.save(category);
+}
+
+@Override
+public Category updateCategory(Category category, Long parentId) {
+    Category existing = categoryRepository.findById(category.getId())
+            .orElseThrow(() -> new RuntimeException("Category not found"));
+
+    existing.setName(category.getName());
+    existing.setDescription(category.getDescription());
+    existing.setImageUrl(category.getImageUrl());
+
+    if (parentId != null) {
+        Category parent = categoryRepository.findById(parentId)
+                .orElseThrow(() -> new RuntimeException("Parent category not found"));
+        existing.setParent(parent);
+    } else {
+        existing.setParent(null);
+    }
+
+    return categoryRepository.save(existing);
+}
 
     // ================= GET BY ID =================
     @Override
@@ -43,32 +57,6 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public List<Category> getAllCategories() {
         return categoryRepository.findAll();
-    }
-
-    // ================= UPDATE =================
-    @Override
-    public Category updateCategory(Category category) {
-
-        Category existingCategory = categoryRepository.findById(category.getId())
-                .orElseThrow(() -> new RuntimeException(
-                        "Category not found with id: " + category.getId()));
-
-        existingCategory.setName(category.getName());
-        existingCategory.setDescription(category.getDescription());
-        existingCategory.setImageUrl(category.getImageUrl());
-        existingCategory.setUpdatedAt(category.getUpdatedAt());
-
-        // Update parent
-        if (category.getParent() != null && category.getParent().getId() != null) {
-            Category parent = categoryRepository.findById(category.getParent().getId())
-                    .orElseThrow(() -> new RuntimeException(
-                            "Parent category not found with id: " + category.getParent().getId()));
-            existingCategory.setParent(parent);
-        } else {
-            existingCategory.setParent(null);
-        }
-
-        return categoryRepository.save(existingCategory);
     }
 
     // ================= DELETE =================
