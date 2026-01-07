@@ -1,5 +1,6 @@
 package com.nguyenthithuhuyen.example10.controllers;
 
+import com.nguyenthithuhuyen.example10.dto.CategoryDTO;
 import com.nguyenthithuhuyen.example10.entity.Category;
 import com.nguyenthithuhuyen.example10.security.services.CategoryService;
 import lombok.RequiredArgsConstructor;
@@ -29,14 +30,14 @@ public class CategoryController {
 
     // ================= GET BY ID =================
     @GetMapping("/{id}")
-    public ResponseEntity<Category> getCategoryById(@PathVariable Long id) {
-        Category category = categoryService.getCategoryById(id);
-        return ResponseEntity.ok(category);
+    public ResponseEntity<CategoryDTO> getCategoryById(@PathVariable Long id) {
+        CategoryDTO dto = categoryService.getCategoryById(id);
+        return ResponseEntity.ok(dto);
     }
 
     // ================= GET ALL =================
     @GetMapping
-    public ResponseEntity<List<Category>> getAllCategories() {
+    public ResponseEntity<List<CategoryDTO>> getAllCategories() {
         return ResponseEntity.ok(categoryService.getAllCategories());
     }
 
