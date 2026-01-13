@@ -21,193 +21,136 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class OrderService {
 
-    private static final Logger log = LoggerFactory.getLogger(OrderService.class);
+    private static final Logger log =
+            LoggerFactory.getLogger(OrderService.class);
 
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
-    private final TableRepository tableRepository;
     private final ProductRepository productRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
-    // ==========================================================
-    // API CHUNG (KHÁCH + NHÂN VIÊN)
-    // ==========================================================
+    /* ==========================================================
+       KHÁCH TẠO ORDER (CHECKOUT)
+       ========================================================== */
     @Transactional
-    public Order processOrder(Order orderRequest, String username) {
+    public Order createOrder(Order orderRequest, String username) {
 
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found: " + username));
-        orderRequest.setUser(user);
+                .orElseThrow(() ->
+                        new RuntimeException("User not found: " + username));
 
-        if (orderRequest.getTable() == null || orderRequest.getTable().getId() == null)
-            throw new RuntimeException("Table is required");
-
-        Long tableId = orderRequest.getTable().getId();
-
-        TableEntity table = tableRepository.findById(tableId)
-                .orElseThrow(() -> new RuntimeException("Table not found: " + tableId));
-
-        Order existingOrder = orderRepository
-                .findFirstByTable_IdAndStatusIn(
-                        tableId,
-                        Arrays.asList(OrderStatus.PENDING, OrderStatus.PREPARING)
-                ).orElse(null);
-
-        if (existingOrder == null) {
-            return createNewOrder(orderRequest, user, table);
+        if (orderRequest.getOrderItems() == null
+                || orderRequest.getOrderItems().isEmpty()) {
+            throw new RuntimeException("Order must contain items");
         }
 
-        return addItemsToOrder(existingOrder, orderRequest.getOrderItems());
-    }
-
-    // ==========================================================
-    // TẠO ORDER MỚI
-    // ==========================================================
-    private Order createNewOrder(Order order, User user, TableEntity table) {
-
-        if (order.getOrderItems() == null || order.getOrderItems().isEmpty())
-            throw new RuntimeException("Order must contain items");
-
-        order.setUser(user);
-        order.setTable(table);
+        orderRequest.setUser(user);
+        orderRequest.setStatus(OrderStatus.PENDING);
 
         BigDecimal total = BigDecimal.ZERO;
 
-        for (OrderItem item : order.getOrderItems()) {
+        /* ===== PROCESS ITEMS ===== */
+        for (OrderItem item : orderRequest.getOrderItems()) {
 
-            Product product = productRepository.findById(item.getProduct().getId())
-                    .orElseThrow(() -> new RuntimeException("Product not found"));
+            Product product = productRepository
+                    .findById(item.getProduct().getId())
+                    .orElseThrow(() ->
+                            new RuntimeException("Product not found"));
 
-            item.setOrder(order);
+            item.setOrder(orderRequest);
             item.setProduct(product);
 
             int qty = (item.getQuantity() == null || item.getQuantity() <= 0)
                     ? 1
                     : item.getQuantity();
 
-            // ✅ GIÁ THEO SIZE
             BigDecimal price = getPriceBySize(product, item.getSize());
             BigDecimal subtotal = price.multiply(BigDecimal.valueOf(qty));
 
+            item.setQuantity(qty);
             item.setPrice(price);
             item.setSubtotal(subtotal);
 
             total = total.add(subtotal);
         }
 
-        order.setTotalAmount(total);
-        order.setDiscount(BigDecimal.ZERO);
-        order.setFinalAmount(total);
-        order.setStatus(OrderStatus.PREPARING);
-        order.setCreatedAt(LocalDateTime.now());
+        orderRequest.setTotalAmount(total);
+        orderRequest.setDiscount(
+                orderRequest.getDiscount() == null
+                        ? BigDecimal.ZERO
+                        : orderRequest.getDiscount()
+        );
+        orderRequest.setFinalAmount(
+                total.subtract(orderRequest.getDiscount())
+        );
+        orderRequest.setCreatedAt(LocalDateTime.now());
+        orderRequest.setUpdatedAt(LocalDateTime.now());
+
+        Order saved = orderRepository.save(orderRequest);
+
+        /* ===== SOCKET CHO ADMIN ===== */
+        messagingTemplate.convertAndSend("/topic/orders", saved);
+
+        return saved;
+    }
+
+    /* ==========================================================
+       NHÂN VIÊN TẠO ORDER (KHÔNG SOCKET)
+       ========================================================== */
+    @Transactional
+    public Order staffCreateOrder(Order orderRequest, String staffUsername) {
+        return createOrder(orderRequest, staffUsername);
+    }
+
+    /* ==========================================================
+       UPDATE STATUS
+       ========================================================== */
+    @Transactional
+    public Order updateOrderStatus(Long orderId, OrderStatus status) {
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() ->
+                        new RuntimeException("Order not found"));
+
+        order.setStatus(status);
         order.setUpdatedAt(LocalDateTime.now());
 
-        table.setStatus(Status.OCCUPIED);
-        tableRepository.save(table);
+        Order saved = orderRepository.save(order);
 
-        return orderRepository.save(order);
+        messagingTemplate.convertAndSend("/topic/orders", saved);
+
+        return saved;
     }
 
-    // ==========================================================
-    // THÊM MÓN VÀO ORDER ĐANG MỞ
-    // ==========================================================
-    private Order addItemsToOrder(Order existing, List<OrderItem> newItems) {
-
-        if (newItems == null || newItems.isEmpty())
-            throw new RuntimeException("Order must contain items");
-
-        BigDecimal total = existing.getTotalAmount();
-
-        for (OrderItem item : newItems) {
-
-            Product product = productRepository.findById(item.getProduct().getId())
-                    .orElseThrow(() -> new RuntimeException("Product not found"));
-
-            item.setOrder(existing);
-            item.setProduct(product);
-
-            int qty = (item.getQuantity() == null || item.getQuantity() <= 0)
-                    ? 1
-                    : item.getQuantity();
-
-            // ✅ GIÁ THEO SIZE
-            BigDecimal price = getPriceBySize(product, item.getSize());
-            BigDecimal subtotal = price.multiply(BigDecimal.valueOf(qty));
-
-            item.setPrice(price);
-            item.setSubtotal(subtotal);
-
-            existing.getOrderItems().add(item);
-            total = total.add(subtotal);
-        }
-
-        existing.setTotalAmount(total);
-        existing.setFinalAmount(total);
-        existing.setUpdatedAt(LocalDateTime.now());
-
-        return orderRepository.save(existing);
-    }
-
-    // ==========================================================
-    // HÀM LẤY GIÁ THEO SIZE (QUAN TRỌNG)
-    // ==========================================================
+    /* ==========================================================
+       LẤY GIÁ THEO SIZE
+       ========================================================== */
     private BigDecimal getPriceBySize(Product product, String size) {
+
         if (size == null || size.isBlank())
             throw new RuntimeException("Size is required");
 
         return product.getPrices().stream()
-                .filter(p -> p.getSize().equalsIgnoreCase(size))
+                .filter(p ->
+                        p.getSize().equalsIgnoreCase(size))
                 .findFirst()
                 .orElseThrow(() ->
-                        new RuntimeException("Price not found for size: " + size))
+                        new RuntimeException(
+                                "Price not found for size: " + size))
                 .getPrice();
     }
 
-    // ==========================================================
-    // KHÁCH TẠO ORDER (CÓ SOCKET)
-    // ==========================================================
-    @Transactional
-    public Order createOrder(Order orderRequest, String username) {
-        Order saved = processOrder(orderRequest, username);
-        messagingTemplate.convertAndSend("/topic/orders", saved);
-        return saved;
-    }
-
-    // ==========================================================
-    // NHÂN VIÊN TẠO ORDER (KHÔNG SOCKET)
-    // ==========================================================
-    @Transactional
-    public Order staffCreateOrder(Order orderRequest, String staffUsername) {
-        return processOrder(orderRequest, staffUsername);
-    }
-
-    // ==========================================================
-    // CÁC API KHÁC (GIỮ NGUYÊN)
-    // ==========================================================
-    public Order getOrderById(Long orderId) {
-        return orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Order not found"));
+    /* ==========================================================
+       CÁC API KHÁC
+       ========================================================== */
+    public Order getOrderById(Long id) {
+        return orderRepository.findById(id)
+                .orElseThrow(() ->
+                        new RuntimeException("Order not found"));
     }
 
     public List<Order> getAllOrders() {
         return orderRepository.findAll();
-    }
-
-    @Transactional
-    public Order updateOrderStatus(Long orderId, OrderStatus status) {
-        Order order = getOrderById(orderId);
-        order.setStatus(status);
-
-        if (status == OrderStatus.PAID || status == OrderStatus.CANCELLED) {
-            TableEntity table = order.getTable();
-            if (table != null) {
-                table.setStatus(Status.FREE);
-                tableRepository.save(table);
-            }
-        }
-
-        order.setUpdatedAt(LocalDateTime.now());
-        return orderRepository.save(order);
     }
 
     public List<Map<String, Object>> getTopSellingProducts(int topN) {

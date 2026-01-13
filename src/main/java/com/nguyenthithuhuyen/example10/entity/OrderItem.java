@@ -30,55 +30,43 @@ public class OrderItem {
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
-    /* ================= SIZE (QUAN TRỌNG) ================= */
+    /* ================= SIZE (BÁNH S / M / L) ================= */
     @Column(nullable = false, length = 10)
-    private String size;   // 👈 THÊM FIELD NÀY
+    private String size;
 
     /* ================= QUANTITY ================= */
     @Column(nullable = false)
     private Integer quantity = 1;
 
-    /* ================= PRICE ================= */
+    /* ================= UNIT PRICE ================= */
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
 
+    /* ================= SUBTOTAL ================= */
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal subtotal = BigDecimal.ZERO;
 
     /* ================= AUDIT ================= */
-    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
-
-    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    /* ================= LIFECYCLE ================= */
     @PrePersist
-    protected void onCreateItem() {
+    protected void onCreate() {
         normalize();
-        calculateSubtotal();
+        subtotal = price.multiply(BigDecimal.valueOf(quantity));
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
     }
 
     @PreUpdate
-    protected void onUpdateItem() {
+    protected void onUpdate() {
         normalize();
-        calculateSubtotal();
+        subtotal = price.multiply(BigDecimal.valueOf(quantity));
         updatedAt = LocalDateTime.now();
     }
 
-    /* ================= HELPER ================= */
     private void normalize() {
-        if (quantity == null || quantity <= 0) {
-            quantity = 1;
-        }
-        if (price == null) {
-            price = BigDecimal.ZERO;
-        }
-    }
-
-    private void calculateSubtotal() {
-        subtotal = price.multiply(BigDecimal.valueOf(quantity));
+        if (quantity == null || quantity <= 0) quantity = 1;
+        if (price == null) price = BigDecimal.ZERO;
     }
 }
