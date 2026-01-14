@@ -88,6 +88,8 @@ public class Order {
     }
 @Column(name = "address")
 private String address;
+@Column(name = "customer_name")
+private String customerName;
 
     @PreUpdate
     protected void onUpdate() {

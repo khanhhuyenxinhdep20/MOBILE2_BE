@@ -69,6 +69,11 @@ public class OrderService {
 if (orderRequest.getAddress() == null) {
     orderRequest.setAddress("Tại quán");
 }
+if (orderRequest.getCustomerName() == null
+    || orderRequest.getCustomerName().isBlank()) {
+    orderRequest.setCustomerName(user.getUsername());
+}
+
 
             item.setQuantity(qty);
             item.setPrice(price);
