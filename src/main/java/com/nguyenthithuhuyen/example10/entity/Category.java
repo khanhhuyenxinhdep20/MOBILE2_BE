@@ -2,6 +2,9 @@ package com.nguyenthithuhuyen.example10.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+
 import jakarta.persistence.*;
 import lombok.*;
 import com.nguyenthithuhuyen.example10.utils.SlugUtil;
@@ -35,13 +38,18 @@ public class Category {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    @ManyToOne
+    // ===== PARENT =====
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
+    @JsonBackReference   // 🔥 CHẶN VÒNG LẶP
     private Category parent;
 
+    // ===== CHILDREN =====
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
+    @JsonManagedReference   // 🔥 CHO PHÉP 1 CHIỀU
     private List<Category> children = new ArrayList<>();
 
+    // ===== PRODUCTS =====
     @OneToMany(mappedBy = "category", fetch = FetchType.LAZY)
     @JsonIgnore
     private List<Product> products;
@@ -50,7 +58,6 @@ public class Category {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
-
         if (slug == null || slug.isEmpty()) {
             slug = SlugUtil.slugify(name);
         }
@@ -59,7 +66,6 @@ public class Category {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
-
         if (slug == null || slug.isEmpty()) {
             slug = SlugUtil.slugify(name);
         }
