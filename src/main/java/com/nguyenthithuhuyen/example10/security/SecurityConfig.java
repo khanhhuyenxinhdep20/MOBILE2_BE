@@ -81,14 +81,16 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .exceptionHandling(ex -> ex.authenticationEntryPoint(unauthorizedHandler))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/api/upload/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
-                .requestMatchers("/error").permitAll()
-                .anyRequest().authenticated()
-            )
+.authorizeHttpRequests(auth -> auth
+    .requestMatchers("/", "/health").permitAll()   // ⭐ BẮT BUỘC
+    .requestMatchers("/api/auth/**").permitAll()
+    .requestMatchers("/api/upload/**").permitAll()
+    .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
+    .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
+    .requestMatchers("/error").permitAll()
+    .anyRequest().authenticated()
+)
+          
             .authenticationProvider(authenticationProvider());
 
         http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
