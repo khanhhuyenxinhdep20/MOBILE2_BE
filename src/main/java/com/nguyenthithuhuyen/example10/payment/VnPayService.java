@@ -40,8 +40,7 @@ public class VnPayService {
                 order.getFinalAmount()
                         .multiply(BigDecimal.valueOf(100))
                         .toBigInteger()
-                        .toString()
-        );
+                        .toString());
         params.put("vnp_CurrCode", "VND");
         params.put("vnp_TxnRef", String.valueOf(order.getId()));
         params.put("vnp_OrderInfo", "Thanh toan don hang " + order.getId());
@@ -58,31 +57,37 @@ public class VnPayService {
         Collections.sort(fieldNames);
 
         // ===== BUILD HASH DATA (KHÔNG ENCODE) =====
+        // ===== BUILD HASH DATA + QUERY (ĐỀU ENCODE) =====
         StringBuilder hashData = new StringBuilder();
-        for (String field : fieldNames) {
-            String value = params.get(field);
-            if (value != null && !value.isEmpty()) {
-                hashData.append(field).append('=').append(value).append('&');
-            }
-        }
-        hashData.setLength(hashData.length() - 1);
-
-        // ===== BUILD QUERY STRING (CÓ ENCODE) =====
         StringBuilder query = new StringBuilder();
+
         for (String field : fieldNames) {
             String value = params.get(field);
             if (value != null && !value.isEmpty()) {
-                query.append(URLEncoder.encode(field, StandardCharsets.UTF_8))
+
+                String encodedValue = URLEncoder.encode(value, StandardCharsets.UTF_8);
+
+                // HASH DATA (PHẢI ENCODE)
+                hashData.append(field)
                         .append('=')
-                        .append(URLEncoder.encode(value, StandardCharsets.UTF_8))
+                        .append(encodedValue)
+                        .append('&');
+
+                // QUERY STRING
+                query.append(field)
+                        .append('=')
+                        .append(encodedValue)
                         .append('&');
             }
         }
+
+        hashData.setLength(hashData.length() - 1);
         query.setLength(query.length() - 1);
 
         // ===== HASH =====
         String secureHash = hmacSHA512(hashSecret.trim(), hashData.toString());
 
+        // DEBUG
         // ===== DEBUG (RẤT QUAN TRỌNG) =====
         System.out.println("HASH DATA = " + hashData);
         System.out.println("PAY URL = " + payUrl + "?" + query + "&vnp_SecureHash=" + secureHash);
@@ -93,8 +98,7 @@ public class VnPayService {
     private String hmacSHA512(String key, String data) {
         try {
             Mac mac = Mac.getInstance("HmacSHA512");
-            SecretKeySpec secretKey =
-                    new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA512");
+            SecretKeySpec secretKey = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA512");
             mac.init(secretKey);
             byte[] raw = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
             StringBuilder hex = new StringBuilder();
