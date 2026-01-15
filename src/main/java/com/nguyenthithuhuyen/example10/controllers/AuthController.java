@@ -13,6 +13,8 @@ import com.nguyenthithuhuyen.example10.security.jwt.JwtUtils;
 import com.nguyenthithuhuyen.example10.security.services.PasswordResetOtpService;
 import com.nguyenthithuhuyen.example10.security.services.UserDetailsImpl;
 import jakarta.validation.Valid;
+import lombok.Data;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -57,22 +59,31 @@ public class AuthController {
     }
 
     // --------- QUÊN MẬT KHẨU (OTP) ----------
+
+    // Gửi OTP
     @PostMapping("/forgot-password")
     public ResponseEntity<?> forgotPassword(@RequestParam String email) {
-        otpService.createOtp(email);
-        return ResponseEntity.ok(Map.of("message", "OTP đã được gửi email"));
+        otpService.sendOtp(email);
+        return ResponseEntity.ok("OTP đã được gửi qua email");
     }
 
+    // Reset password
     @PostMapping("/reset-password")
-    public ResponseEntity<?> resetPassword(
-            @RequestParam String email,
-            @RequestParam String otp,
-            @RequestParam String newPassword
-    ) {
-        otpService.resetPassword(email, otp, newPassword);
+    public ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest request) {
+        otpService.resetPassword(
+                request.getEmail(),
+                request.getOtp(),
+                request.getNewPassword()
+        );
         return ResponseEntity.ok("Đổi mật khẩu thành công");
     }
-    // ----------------- Đăng nhập -----------------
+
+    @Data
+    static class ResetPasswordRequest {
+        private String email;
+        private String otp;
+        private String newPassword;
+    }    // ----------------- Đăng nhập -----------------
     @PostMapping("/signin")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
         Authentication authentication = authenticationManager.authenticate(

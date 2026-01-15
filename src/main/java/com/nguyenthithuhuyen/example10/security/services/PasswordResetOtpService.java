@@ -17,9 +17,10 @@ public class PasswordResetOtpService {
     private final PasswordResetOtpRepository otpRepo;
     private final UserRepository userRepo;
     private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
 
-    // Tạo OTP 6 số
-    public String createOtp(String email) {
+    // Gửi OTP
+    public void sendOtp(String email) {
 
         User user = userRepo.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Email không tồn tại"));
@@ -43,10 +44,11 @@ public class PasswordResetOtpService {
                         .build()
         );
 
-        return otp;
+        // GỬI EMAIL
+        emailService.sendOtpEmail(email, otp);
     }
 
-    // Xác nhận OTP + đổi mật khẩu
+    // Đổi mật khẩu
     public void resetPassword(String email, String otp, String newPassword) {
 
         PasswordResetOtp resetOtp = otpRepo
@@ -57,8 +59,7 @@ public class PasswordResetOtpService {
             throw new RuntimeException("OTP đã hết hạn");
         }
 
-        User user = userRepo.findByEmail(email)
-                .orElseThrow();
+        User user = userRepo.findByEmail(email).orElseThrow();
 
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepo.save(user);

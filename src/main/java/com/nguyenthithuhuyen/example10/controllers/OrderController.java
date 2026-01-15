@@ -68,13 +68,6 @@ public ResponseEntity<?> createOrder(@RequestBody Order order) {
         }
     }
 
-    /* =====================================================
-       LẤY ORDER ĐANG MỞ THEO BÀN
-       ===================================================== */
-
-    /* =====================================================
-       UPDATE TRẠNG THÁI ORDER
-       ===================================================== */
     @PreAuthorize("hasAnyRole('MODERATOR', 'ADMIN')")
     @PutMapping("/{id}/status")
     public ResponseEntity<?> updateStatus(
