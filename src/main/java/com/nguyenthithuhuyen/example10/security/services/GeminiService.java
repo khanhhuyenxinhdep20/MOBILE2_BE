@@ -20,7 +20,7 @@ public class GeminiService {
     public String askGemini(String prompt) {
 
         String url =
-            "https://generativelanguage.googleapis.com/v1/models/gemini-1.0-pro:generateContent"
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
             + "?key=" + apiKey;
 
         Map<String, Object> body = Map.of(
