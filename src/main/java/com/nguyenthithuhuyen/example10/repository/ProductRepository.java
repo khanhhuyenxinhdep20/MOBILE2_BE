@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.util.Optional;
 import org.springframework.data.domain.Pageable;
+import java.math.BigDecimal;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
@@ -21,16 +22,17 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Optional<Product> findByIdWithCategory(@Param("id") Long id);
 
 @Query("""
-SELECT DISTINCT p FROM Product p
+SELECT p FROM Product p
 LEFT JOIN p.prices pr
 WHERE p.isActive = true
 AND (:keyword IS NULL OR lower(p.name) LIKE lower(concat('%', :keyword, '%')))
 AND (:maxPrice IS NULL OR pr.price <= :maxPrice)
-ORDER BY pr.price ASC
+GROUP BY p
+ORDER BY MIN(pr.price)
 """)
     List<Product> searchByChat(
             @Param("keyword") String keyword,
-            @Param("maxPrice") Integer maxPrice,
+            @Param("maxPrice") BigDecimal maxPrice,
             Pageable pageable);
 
     @Query("""

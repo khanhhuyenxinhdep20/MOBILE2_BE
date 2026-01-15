@@ -1,11 +1,13 @@
 package com.nguyenthithuhuyen.example10.mapper;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 import com.nguyenthithuhuyen.example10.dto.CategoryDTO;
 import com.nguyenthithuhuyen.example10.dto.ProductPriceDTO;
 import com.nguyenthithuhuyen.example10.dto.ProductResponseDto;
 import com.nguyenthithuhuyen.example10.entity.Product;
+import com.nguyenthithuhuyen.example10.entity.ProductPrice;
 
 
 public class ProductMapper {
@@ -51,7 +53,12 @@ public class ProductMapper {
                     ))
                     .toList()
         );
+         BigDecimal minPrice = product.getPrices().stream()
+                .map(ProductPrice::getPrice)
+                .min(BigDecimal::compareTo)
+                .orElse(BigDecimal.ZERO);
 
+        dto.setMinPrice(minPrice);
         return dto;
     }
 }

@@ -13,6 +13,7 @@ public class ProductResponseDto {
     public BigDecimal price;
     public String imageUrl;
     public Integer stockQuantity;
+    private BigDecimal minPrice;
     public Boolean isActive;
     public CategoryDTO category; 
     private List<ProductPriceDTO> prices;}
