@@ -26,7 +26,7 @@ public class ChatController {
     @Value("${gemini.api.key}")
     private String apiKey;
 
-    private final String MODEL_NAME = "gemini-2.5-flash"; 
+    private final String MODEL_NAME = "gemini-2.5-flash";
     private final String BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/";
 
     @PostMapping
@@ -36,7 +36,8 @@ public class ChatController {
         // 1. LẤY DỮ LIỆU TỪ DATABASE (Hàm hay dùng)
         // Lấy danh sách sản phẩm và chuyển thành chuỗi text đơn giản cho AI đọc
         String productInfo = productService.getAllProducts().stream()
-                .map(p -> String.format("- %s: %s (Số lượng: %d)", p.getName(), p.getDescription(), p.getStockQuantity()))
+                .map(p -> String.format("- %s: %s (Số lượng: %d)", p.getName(), p.getDescription(),
+                        p.getStockQuantity()))
                 .collect(Collectors.joining("\n"));
 
         // Lấy danh sách danh mục
@@ -46,9 +47,9 @@ public class ChatController {
 
         // 2. TẠO PROMPT "THÔNG MINH" (Tiêm ngữ cảnh)
         String systemContext = "Bạn là nhân viên tư vấn bán hàng chuyên nghiệp. " +
-                "Dưới đây là danh sách sản phẩm chúng tôi có:\n" + productInfo + 
+                "Dưới đây là danh sách sản phẩm chúng tôi có:\n" + productInfo +
                 "\nCác danh mục hàng: " + categoryInfo +
-                "\n\nCâu hỏi của khách: " + userPrompt + 
+                "\n\nCâu hỏi của khách: " + userPrompt +
                 "\nTrả lời ngắn gọn, lịch sự dựa trên dữ liệu trên. Nếu không có sản phẩm khách tìm, hãy gợi ý sản phẩm tương tự.";
 
         // 3. GỌI API GEMINI
@@ -56,10 +57,8 @@ public class ChatController {
         String fullUrl = BASE_URL + MODEL_NAME + ":generateContent?key=" + apiKey;
 
         Map<String, Object> body = Map.of(
-            "contents", List.of(
-                Map.of("parts", List.of(Map.of("text", systemContext)))
-            )
-        );
+                "contents", List.of(
+                        Map.of("parts", List.of(Map.of("text", systemContext)))));
 
         try {
             ResponseEntity<Map> responseEntity = restTemplate.postForEntity(fullUrl, body, Map.class);
@@ -72,7 +71,9 @@ public class ChatController {
             List parts = (List) content.get("parts");
             String aiText = (String) ((Map) parts.get(0)).get("text");
 
-            return ResponseEntity.ok(Map.of("text", aiText));
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "text", aiText));
         } catch (Exception e) {
             return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
         }
