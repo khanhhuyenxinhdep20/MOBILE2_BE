@@ -1,11 +1,10 @@
 package com.nguyenthithuhuyen.example10.security.services;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-import lombok.RequiredArgsConstructor;
-import jakarta.annotation.PostConstruct;
 
 import java.util.*;
 
@@ -16,7 +15,9 @@ public class GeminiService {
     private String apiKey;
 
     private final RestTemplate restTemplate = new RestTemplate();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
+    /* ================= GỌI GEMINI – TEXT ================= */
     public String askGemini(String prompt) {
 
         String url =
@@ -40,12 +41,12 @@ public class GeminiService {
             new HttpEntity<>(body, headers);
 
         try {
-            ResponseEntity<Map> res = restTemplate.postForEntity(
-                url, entity, Map.class
-            );
+            ResponseEntity<Map> res =
+                restTemplate.postForEntity(url, entity, Map.class);
 
             Map<String, Object> candidate =
-                ((List<Map<String, Object>>) res.getBody().get("candidates")).get(0);
+                ((List<Map<String, Object>>) res.getBody()
+                    .get("candidates")).get(0);
 
             Map<String, Object> content =
                 (Map<String, Object>) candidate.get("content");
@@ -58,6 +59,44 @@ public class GeminiService {
         } catch (Exception e) {
             e.printStackTrace();
             return "Gemini error";
+        }
+    }
+
+    /* ================= GỌI GEMINI – INTENT ================= */
+    public Map<String, Object> askGeminiForIntent(String userMessage) {
+
+        String systemPrompt = """
+        Bạn là trợ lý AI cho quán bánh.
+        Phân tích câu người dùng và trả về JSON duy nhất.
+
+        FORMAT:
+        {
+          "intent": "SHOW_PRODUCTS | FILTER_PRICE | FILTER_FLAVOR | TRACK_ORDER",
+          "keyword": "",
+          "maxPrice": number | null
+        }
+
+        Ví dụ:
+        bánh socola dưới 100k
+        => {"intent":"FILTER_PRICE","keyword":"socola","maxPrice":100000}
+        """;
+
+        String finalPrompt = systemPrompt + "\nUser: " + userMessage;
+
+        String raw = askGemini(finalPrompt);
+
+        return parseJsonSafe(raw);
+    }
+
+    /* ================= PARSE JSON ================= */
+    private Map<String, Object> parseJsonSafe(String text) {
+        try {
+            String json =
+                text.substring(text.indexOf("{"), text.lastIndexOf("}") + 1);
+
+            return objectMapper.readValue(json, Map.class);
+        } catch (Exception e) {
+            return Map.of("intent", "UNKNOWN");
         }
     }
 }

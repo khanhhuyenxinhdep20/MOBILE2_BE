@@ -21,15 +21,15 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("SELECT DISTINCT p FROM Product p LEFT JOIN FETCH p.category WHERE p.id = :id")
     Optional<Product> findByIdWithCategory(@Param("id") Long id);
 
-@Query("""
-SELECT p FROM Product p
-LEFT JOIN p.prices pr
-WHERE p.isActive = true
-AND (:keyword IS NULL OR lower(p.name) LIKE lower(concat('%', :keyword, '%')))
-AND (:maxPrice IS NULL OR pr.price <= :maxPrice)
-GROUP BY p
-ORDER BY MIN(pr.price)
-""")
+    @Query("""
+            SELECT p FROM Product p
+            LEFT JOIN p.prices pr
+            WHERE p.isActive = true
+            AND (:keyword IS NULL OR lower(p.name) LIKE lower(concat('%', :keyword, '%')))
+            AND (:maxPrice IS NULL OR pr.price <= :maxPrice)
+            GROUP BY p
+            ORDER BY MIN(pr.price)
+            """)
     List<Product> searchByChat(
             @Param("keyword") String keyword,
             @Param("maxPrice") BigDecimal maxPrice,

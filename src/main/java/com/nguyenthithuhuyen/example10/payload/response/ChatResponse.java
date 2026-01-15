@@ -9,6 +9,15 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 public class ChatResponse {
+
     private String text;
     private List<ProductResponseDto> products;
+
+    public static ChatResponse products(String text, List<ProductResponseDto> products) {
+        return new ChatResponse(text, products);
+    }
+
+    public static ChatResponse text(String text) {
+        return new ChatResponse(text, null);
+    }
 }
