@@ -26,5 +26,6 @@ public class PasswordResetOtp {
     @Column(nullable = false)
     private LocalDateTime expiredAt;
 
-    private boolean used;
+    @Column(nullable = false)
+    private Boolean used = false;
 }
