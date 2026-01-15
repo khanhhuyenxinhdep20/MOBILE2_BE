@@ -17,7 +17,7 @@ import java.util.List;
 public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByUser(User user);
     List<Order> findByStatus(OrderStatus status);
-
+ List<Order> findByUser_Username(String username);
     @Query("SELECT new map(p.id as productId, p.name as productName, SUM(oi.quantity) as quantitySold) " +
            "FROM OrderItem oi " +
            "JOIN oi.order o " +

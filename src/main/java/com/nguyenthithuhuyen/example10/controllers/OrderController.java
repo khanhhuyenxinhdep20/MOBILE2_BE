@@ -19,7 +19,6 @@ import java.util.Map;
 public class OrderController {
 
     private final OrderService orderService;
-    private final SimpMessagingTemplate messagingTemplate;
 
     /* =====================================================
        ADMIN / MODERATOR – LẤY TẤT CẢ ORDER
@@ -31,87 +30,44 @@ public class OrderController {
     }
 
     /* =====================================================
-       KHÁCH TẠO / THÊM ORDER (CÓ SOCKET)
+       USER / ADMIN – TẠO ORDER
        ===================================================== */
-@PreAuthorize("hasAnyRole('USER','ADMIN')")
-@PostMapping
-public ResponseEntity<?> createOrder(@RequestBody Order order) {
-    String username = SecurityContextHolder
-            .getContext()
-            .getAuthentication()
-            .getName();
-    try {
-        Order created = orderService.createOrder(order, username);
-        return ResponseEntity.status(201).body(created);
-    } catch (RuntimeException e) {
-        return ResponseEntity.badRequest().body(e.getMessage());
-    }
-}
-    /* =====================================================
-       NHÂN VIÊN TẠO / THÊM ORDER (KHÔNG SOCKET)
-       ===================================================== */
-    @PreAuthorize("hasAnyRole('MODERATOR', 'ADMIN')")
-    @PostMapping("/staff")
-    public ResponseEntity<?> staffCreateOrder(@RequestBody Order orderRequest) {
-        String staffUsername = SecurityContextHolder.getContext()
+    @PreAuthorize("hasAnyRole('USER','ADMIN')")
+    @PostMapping
+    public ResponseEntity<?> createOrder(@RequestBody Order order) {
+        String username = SecurityContextHolder
+                .getContext()
                 .getAuthentication()
                 .getName();
-        try {
-            Order created = orderService.staffCreateOrder(orderRequest, staffUsername);
 
-            // gửi riêng cho staff (nếu cần realtime)
-            messagingTemplate.convertAndSend("/topic/staff/orders", created);
-
-            return ResponseEntity.status(201).body(created);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        Order created = orderService.createOrder(order, username);
+        return ResponseEntity.status(201).body(created);
     }
 
+    /* =====================================================
+       USER – LẤY ĐƠN HÀNG CỦA CHÍNH MÌNH
+       ===================================================== */
+    @PreAuthorize("hasAnyRole('USER','ADMIN')")
+    @GetMapping("/my")
+    public ResponseEntity<List<Order>> getMyOrders() {
+        String username = SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getName();
+
+        return ResponseEntity.ok(orderService.getOrdersByUsername(username));
+    }
+
+    /* =====================================================
+       ADMIN / MODERATOR – UPDATE STATUS
+       ===================================================== */
     @PreAuthorize("hasAnyRole('MODERATOR', 'ADMIN')")
     @PutMapping("/{id}/status")
     public ResponseEntity<?> updateStatus(
             @PathVariable Long id,
             @RequestParam String status
     ) {
-        try {
-            OrderStatus newStatus = OrderStatus.valueOf(status.toUpperCase());
-            Order updated = orderService.updateOrderStatus(id, newStatus);
-
-            messagingTemplate.convertAndSend("/topic/orders", updated);
-            return ResponseEntity.ok(updated);
-
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body("Trạng thái không hợp lệ");
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(404).body(e.getMessage());
-        }
+        OrderStatus newStatus = OrderStatus.valueOf(status.toUpperCase());
+        return ResponseEntity.ok(orderService.updateOrderStatus(id, newStatus));
     }
-
-    /* =====================================================
-       REPORT
-       ===================================================== */
-    @PreAuthorize("hasAnyRole('MODERATOR', 'ADMIN')")
-    @GetMapping("/report/top-products")
-    public ResponseEntity<List<Map<String, Object>>> getTopSellingProducts(
-            @RequestParam(defaultValue = "5") int topN
-    ) {
-        return ResponseEntity.ok(orderService.getTopSellingProducts(topN));
-    }
-
-    @PreAuthorize("hasAnyRole('MODERATOR', 'ADMIN')")
-    @GetMapping("/report/revenue-by-category")
-    public ResponseEntity<List<Map<String, Object>>> getRevenueByCategory() {
-        return ResponseEntity.ok(orderService.getRevenueByCategory());
-    }
-
-    @PreAuthorize("hasAnyRole('MODERATOR', 'ADMIN')")
-    @GetMapping("/report/revenue-by-day")
-    public ResponseEntity<List<Map<String, Object>>> getRevenueByDay() {
-        return ResponseEntity.ok(orderService.getRevenueByDay());
-    }
-
-    /* =====================================================
-       LẤY ORDER THEO BÀN + STATUS
-       ===================================================== */
 }

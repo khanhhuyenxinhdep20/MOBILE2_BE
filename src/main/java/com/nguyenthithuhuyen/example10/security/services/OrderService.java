@@ -178,6 +178,10 @@ public class OrderService {
     public List<Map<String, Object>> getRevenueByCategory() {
         return orderRepository.findRevenueByCategory(OrderStatus.PAID);
     }
+    public List<Order> getOrdersByUsername(String username) {
+    return orderRepository.findByUser_Username(username);
+}
+
 
     public List<Map<String, Object>> getRevenueByDay() {
         return orderRepository.findRevenueByDay(OrderStatus.PAID);
