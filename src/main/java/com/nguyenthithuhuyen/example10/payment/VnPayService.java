@@ -9,11 +9,10 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Map;
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 import java.util.*;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
 @Service
 public class VnPayService {
@@ -48,8 +47,8 @@ public class VnPayService {
         params.put("vnp_OrderInfo", "Thanh toan don hang " + order.getId());
         params.put("vnp_OrderType", "other");
         params.put("vnp_Locale", "vn");
+        params.put("vnp_IpAddr", "0.0.0.0");
         params.put("vnp_ReturnUrl", returnUrl.trim());
-        params.put("vnp_IpAddr", "127.0.0.1");
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
         params.put("vnp_CreateDate", LocalDateTime.now().format(formatter));
@@ -74,15 +73,19 @@ public class VnPayService {
             String value = params.get(field);
             if (value != null && !value.isEmpty()) {
                 query.append(URLEncoder.encode(field, StandardCharsets.UTF_8))
-                     .append('=')
-                     .append(URLEncoder.encode(value, StandardCharsets.UTF_8))
-                     .append('&');
+                        .append('=')
+                        .append(URLEncoder.encode(value, StandardCharsets.UTF_8))
+                        .append('&');
             }
         }
         query.setLength(query.length() - 1);
 
         // ===== HASH =====
         String secureHash = hmacSHA512(hashSecret.trim(), hashData.toString());
+
+        // ===== DEBUG (RẤT QUAN TRỌNG) =====
+        System.out.println("HASH DATA = " + hashData);
+        System.out.println("PAY URL = " + payUrl + "?" + query + "&vnp_SecureHash=" + secureHash);
 
         return payUrl + "?" + query + "&vnp_SecureHash=" + secureHash;
     }
