@@ -55,7 +55,7 @@ public class SePayService {
 
         // ===== PAYMENT REF (CHỈ TẠO 1 LẦN) =====
         if (order.getPaymentRef() == null || order.getPaymentRef().isBlank()) {
-            order.setPaymentRef("ORDER" + order.getId());
+            order.setPaymentRef("ORDER_" + order.getId());
             orderRepository.save(order);
         }
 

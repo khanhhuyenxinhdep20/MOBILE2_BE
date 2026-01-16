@@ -136,12 +136,13 @@ public Order createOrder(Order orderRequest, String username) {
 
     order.setFinalAmount(finalAmount);
 
-    // ===== PAYMENT REF =====
-    if (!paymentMethod.equals("CASH")) {
-        order.setPaymentRef("SEPAY-" + UUID.randomUUID());
-    }
-
     Order saved = orderRepository.save(order);
+
+    // ===== PAYMENT REF (Set sau khi có ID) =====
+    if (!paymentMethod.equals("CASH")) {
+        saved.setPaymentRef("ORDER_" + saved.getId());
+        saved = orderRepository.save(saved);
+    }
 
     // ===== WS NOTIFY =====
     messagingTemplate.convertAndSend("/topic/orders", saved);
@@ -173,15 +174,17 @@ public void markOrderPaidByWebhook(String content, BigDecimal amount) {
 
     log.info("SePay webhook received: content={}, amount={}", content, amount);
 
-    // 1️⃣ Tách ORDER_ID từ content
+    // 1️⃣ Tách ORDER_ID từ content (format: ORDER_123)
     Pattern pattern = Pattern.compile("ORDER_(\\d+)");
     Matcher matcher = pattern.matcher(content);
 
     if (!matcher.find()) {
-        throw new RuntimeException("Invalid payment content: " + content);
+        log.error("Cannot parse ORDER_ID from content: {}", content);
+        throw new RuntimeException("Invalid payment content format. Expected ORDER_ID, got: " + content);
     }
 
     Long orderId = Long.parseLong(matcher.group(1));
+    log.info("Extracted ORDER_ID from webhook: {}", orderId);
 
     // 2️⃣ Tìm order
     Order order = orderRepository.findById(orderId)
