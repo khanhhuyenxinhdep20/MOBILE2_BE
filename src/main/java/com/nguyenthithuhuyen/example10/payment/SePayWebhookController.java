@@ -50,7 +50,8 @@ public class SePayWebhookController {
         }
     }
 
-    // 🧪 TEST endpoint
+    // 🧪 TEST endpoint - GET & POST
+    @GetMapping("/webhook/test")
     @PostMapping("/webhook/test")
     public ResponseEntity<String> testWebhook(
             @RequestParam Long orderId,
