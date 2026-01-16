@@ -16,7 +16,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
-
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 @Service
 @RequiredArgsConstructor
 public class OrderService {
@@ -168,22 +169,50 @@ private BigDecimal resolvePrice(Product product, String size) {
 
 
 @Transactional
-public void markOrderPaidByWebhook(String paymentRef, BigDecimal amount) {
+public void markOrderPaidByWebhook(String content, BigDecimal amount) {
 
-    Order order = orderRepository.findByPaymentRef(paymentRef)
-            .orElseThrow(() -> new RuntimeException("Order not found"));
+    log.info("SePay webhook received: content={}, amount={}", content, amount);
 
-    if (order.getStatus() == OrderStatus.PAID) return;
+    // 1️⃣ Tách ORDER_ID từ content
+    Pattern pattern = Pattern.compile("ORDER_(\\d+)");
+    Matcher matcher = pattern.matcher(content);
 
-    if (order.getFinalAmount().compareTo(amount) != 0) {
-        throw new RuntimeException("Amount mismatch");
+    if (!matcher.find()) {
+        throw new RuntimeException("Invalid payment content: " + content);
     }
 
+    Long orderId = Long.parseLong(matcher.group(1));
+
+    // 2️⃣ Tìm order
+    Order order = orderRepository.findById(orderId)
+            .orElseThrow(() ->
+                    new RuntimeException("Order not found: " + orderId)
+            );
+
+    // 3️⃣ Check trùng
+    if (order.getStatus() == OrderStatus.PAID) {
+        log.warn("Order {} already PAID", orderId);
+        return;
+    }
+
+    // 4️⃣ Check số tiền
+    long orderAmount = order.getFinalAmount().longValueExact();
+    if (!amount.equals(orderAmount)) {
+        throw new RuntimeException(
+                "Amount mismatch. webhook=" + amount + ", order=" + orderAmount
+        );
+    }
+
+    // 5️⃣ Update
     order.setStatus(OrderStatus.PAID);
     order.setPaidAt(LocalDateTime.now());
 
     orderRepository.save(order);
+
+    log.info("Order {} marked as PAID", orderId);
 }
+
+
 
     /* ==========================================================
        NHÂN VIÊN TẠO ORDER
