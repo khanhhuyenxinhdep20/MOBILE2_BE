@@ -30,16 +30,16 @@ public class SePayWebhookController {
     public ResponseEntity<String> sepayWebhook(
             @RequestBody SePayWebhookRequest req) {
 
-        log.info("🔔 WEBHOOK: content={}, amount={}", req.getContent(), req.getAmount());
+        log.info("🔔 WEBHOOK: description={}, amount={}", req.getDescription(), req.getAmount());
         
-        if (req.getContent() == null || req.getContent().isBlank()) {
-            log.error("❌ Content is empty!");
-            return ResponseEntity.status(400).body("Content required");
+        if (req.getDescription() == null || req.getDescription().isBlank()) {
+            log.error("❌ Description is empty!");
+            return ResponseEntity.status(400).body("Description required");
         }
         
         try {
             orderService.markOrderPaidByWebhook(
-                    req.getContent(),
+                    req.getDescription(),
                     req.getAmount()
             );
             log.info("✅ Webhook OK");
