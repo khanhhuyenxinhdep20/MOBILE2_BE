@@ -19,33 +19,42 @@ public class SePayWebhookController {
 
     private final OrderService orderService;
 
+    // 🔍 RAW body handler - debug webhook payload format
+    @PostMapping("/webhook/raw")
+    public ResponseEntity<String> sepayWebhookRaw(@RequestBody String rawBody) {
+        log.info("🔔 RAW WEBHOOK BODY: {}", rawBody);
+        return ResponseEntity.ok("Received");
+    }
+
     @PostMapping("/webhook")
     public ResponseEntity<String> sepayWebhook(
             @RequestBody SePayWebhookRequest req) {
 
-        log.info("🔔 WEBHOOK RECEIVED: content={}, amount={}", req.getContent(), req.getAmount());
-        log.info("Full webhook payload: {}", req.toString());
+        log.info("🔔 WEBHOOK: content={}, amount={}", req.getContent(), req.getAmount());
+        
+        if (req.getContent() == null || req.getContent().isBlank()) {
+            log.error("❌ Content is empty!");
+            return ResponseEntity.status(400).body("Content required");
+        }
         
         try {
             orderService.markOrderPaidByWebhook(
                     req.getContent(),
                     req.getAmount()
             );
-            log.info("✅ Webhook processed successfully");
+            log.info("✅ Webhook OK");
             return ResponseEntity.ok("OK");
         } catch (Exception e) {
-            log.error("❌ Webhook error: {}", e.getMessage(), e);
-            return ResponseEntity.status(500).body("ERROR: " + e.getMessage());
+            log.error("❌ Webhook error: {}", e.getMessage());
+            return ResponseEntity.status(500).body("ERROR");
         }
     }
 
-    // 🧪 TEST endpoint - không cần thanh toán thực tế
+    // 🧪 TEST endpoint
     @PostMapping("/webhook/test")
     public ResponseEntity<String> testWebhook(
             @RequestParam Long orderId,
             @RequestParam(required = false) BigDecimal amount) {
-
-        log.info("🧪 TEST WEBHOOK: orderId={}, amount={}", orderId, amount);
 
         try {
             String content = "ORDER_" + orderId;
@@ -53,11 +62,11 @@ public class SePayWebhookController {
 
             orderService.markOrderPaidByWebhook(content, testAmount);
 
-            log.info("✅ Test webhook success");
-            return ResponseEntity.ok("✅ Test passed! Order " + orderId + " marked as PAID");
+            log.info("✅ Test OK");
+            return ResponseEntity.ok("✅ Order " + orderId + " PAID");
         } catch (Exception e) {
-            log.error("❌ Test webhook error: {}", e.getMessage(), e);
-            return ResponseEntity.status(500).body("❌ Test failed: " + e.getMessage());
+            log.error("❌ Test error: {}", e.getMessage());
+            return ResponseEntity.status(500).body("ERROR: " + e.getMessage());
         }
     }
 }
