@@ -50,11 +50,11 @@ public class BillService {
 
         Order order = orderRepository.findById(request.getOrderId())
                 .orElseThrow(() ->
-                        new RuntimeException("Không tìm thấy đơn hàng #" + request.getOrderId()));
+                        new RuntimeException("Không tìm thấy đơn hàng " + request.getOrderId()));
 
         // ❌ Không cho tạo trùng bill
         if (billRepository.existsByOrderId(order.getId())) {
-            throw new RuntimeException("Hóa đơn đã tồn tại cho đơn hàng #" + order.getId());
+            throw new RuntimeException("Hóa đơn đã tồn tại cho đơn hàng " + order.getId());
         }
 
         // ✅ Khi tạo bill = đã thanh toán
@@ -75,9 +75,6 @@ public class BillService {
         return billRepository.save(bill);
     }
 
-    /* ==========================================================
-       GET / UPDATE / DELETE
-       ========================================================== */
     public Bill getById(Long id) {
         return billRepository.findById(id)
                 .orElseThrow(() ->
