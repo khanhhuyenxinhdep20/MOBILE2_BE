@@ -46,9 +46,12 @@ public class OrderController {
                 .getAuthentication()
                 .getName();
 
-        return ResponseEntity.ok(
-                orderService.getOrdersByUsername(username)
-        );
+        System.out.println("🔍 DEBUG: username = " + username);
+        
+        List<Order> orders = orderService.getOrdersByUsername(username);
+        System.out.println("✅ Orders found: " + (orders != null ? orders.size() : 0));
+        
+        return ResponseEntity.ok(orders);
     }
 
     /* =====================================================
