@@ -72,8 +72,7 @@ public class SePayWebhookController {
             return ResponseEntity.status(500).body("ERROR");
         }
     }
-        }
-    }
+
     // 🧪 TEST endpoint - GET & POST
     @GetMapping("/webhook/test")
     @PostMapping("/webhook/test")
