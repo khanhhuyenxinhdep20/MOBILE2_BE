@@ -5,14 +5,10 @@ import com.nguyenthithuhuyen.example10.security.services.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 import java.math.BigDecimal;
-import java.util.Base64;
 
 @RestController
 @RequestMapping("/api/sepay")
@@ -22,9 +18,6 @@ public class SePayWebhookController {
     private static final Logger log = LoggerFactory.getLogger(SePayWebhookController.class);
 
     private final OrderService orderService;
-
-    @Value("${sepay.api-secret}")
-    private String sepayApiSecret;
 
     // 🔍 RAW body handler - debug webhook payload format
     @PostMapping("/webhook/raw")
@@ -53,40 +46,19 @@ public class SePayWebhookController {
 
     @PostMapping("/webhook")
     public ResponseEntity<String> sepayWebhook(
-            @RequestBody SePayWebhookRequest req,
-            @RequestHeader(value = "X-Sepay-Signature", required = false) String signature) {
+            @RequestBody SePayWebhookRequest req) {
 
-        log.debug("🔔 WEBHOOK received from SePay");
+        log.info("🔔 WEBHOOK received from SePay");
         log.debug("  - content: {}", req.getContent());
         log.debug("  - amount: {}", req.getAmount());
-        log.debug("  - signature: {}", signature);
         
-        // ===== STEP 1: VERIFY SIGNATURE =====
-        if (signature == null || signature.isBlank()) {
-            log.error("❌ MISSING SIGNATURE - This might be fake data!");
-            return ResponseEntity.status(401).body("Signature required");
-        }
-        
-        // Tạo data string để verify
-        String dataToSign = req.getContent() + "|" + req.getAmount();
-        String expectedSignature = generateHmacSha256(dataToSign, sepayApiSecret);
-        
-        if (!signature.equals(expectedSignature)) {
-            log.error("❌ INVALID SIGNATURE - FAKE DATA DETECTED!");
-            log.error("   Expected: {}", expectedSignature);
-            log.error("   Got: {}", signature);
-            return ResponseEntity.status(401).body("Invalid signature");
-        }
-        
-        log.info("✅ Signature verified - Data from SePay is authentic");
-        
-        // ===== STEP 2: VALIDATE CONTENT =====
+        // ===== VALIDATE CONTENT =====
         if (req.getContent() == null || req.getContent().isBlank()) {
             log.error("❌ Content is empty!");
             return ResponseEntity.status(400).body("Content required");
         }
         
-        // ===== STEP 3: PROCESS WEBHOOK =====
+        // ===== PROCESS WEBHOOK =====
         try {
             log.debug("Processing order payment...");
             orderService.markOrderPaidByWebhook(
@@ -100,20 +72,8 @@ public class SePayWebhookController {
             return ResponseEntity.status(500).body("ERROR");
         }
     }
-    
-    /* ===== HELPER: Generate HMAC SHA256 Signature ===== */
-    private String generateHmacSha256(String data, String secret) {
-        try {
-            Mac mac = Mac.getInstance("HmacSHA256");
-            mac.init(new SecretKeySpec(secret.getBytes(), "HmacSHA256"));
-            byte[] hashBytes = mac.doFinal(data.getBytes());
-            return Base64.getEncoder().encodeToString(hashBytes);
-        } catch (Exception e) {
-            log.error("❌ Error generating signature: {}", e.getMessage());
-            throw new RuntimeException("Failed to generate signature", e);
         }
     }
-
     // 🧪 TEST endpoint - GET & POST
     @GetMapping("/webhook/test")
     @PostMapping("/webhook/test")
@@ -122,7 +82,7 @@ public class SePayWebhookController {
             @RequestParam(required = false) BigDecimal amount) {
 
         try {
-            String content = "ORDER_" + orderId;
+            String content = "ORDER" + orderId;  // Test with ORDER23 format
             BigDecimal testAmount = amount != null ? amount : new BigDecimal(50000);
 
             orderService.markOrderPaidByWebhook(content, testAmount);
