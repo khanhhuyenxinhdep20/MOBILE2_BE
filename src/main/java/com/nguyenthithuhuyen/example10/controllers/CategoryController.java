@@ -17,7 +17,6 @@ public class CategoryController {
 
     private final CategoryService categoryService;
 
-    // ================= CREATE =================
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<Category> createCategory(
